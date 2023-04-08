@@ -1,0 +1,38 @@
+* km-window
+
+Misc Window Commands.
+
+** Installation
+
+Emacs >= 27.1 is required.
+
+*** Manual
+
+Ensure that you have installed required dependencies:
+- ~transient~ >= 0.3.7.50
+
+Download the source code and put it wherever you like, e.g. into =~/.emacs.d/km-window/=
+
+#+begin_src shell :eval no
+git clone https://github.com/KarimAziev/km-window.git ~/.emacs.d/km-window/
+#+end_src
+
+Add the downloaded directory to the load path:
+
+#+begin_src elisp :eval no
+(add-to-list 'load-path "~/.emacs.d/km-window/")
+(require 'km-window)
+#+end_src
+
+#+begin_src elisp :eval no
+(use-package km-window
+  :straight (km-window
+             :repo "KarimAziev/km-window"
+             :type git
+             :host github)
+  :bind (("C-M-v" . km-window-scroll-other-window-down)
+         ("C-M-S-v" . km-window-scroll-other-window-up)
+         ("C-M-]" . km-window-scroll-other-window-down)
+         ("C-M-[" . km-window-scroll-other-window-up)
+         ("C-c w" . km-window-transient)) )
+#+end_src
