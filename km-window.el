@@ -226,7 +226,42 @@ do nothing."
                    (concat "Unset "
                            (km-window-transient-get-dedicated-description)
                            " dedicated windows")))
-   ("o" "Other window" other-window)])
+   ("o" "Other window" other-window)]
+  [:description (lambda ()
+                  (format "Resize (width %d) (height %d)" (window-width)
+                          (window-height)))
+                ("<right>" "Increase width"
+                 (lambda ()
+                   (interactive)
+                   (enlarge-window-horizontally 1)
+                   (transient-setup 'km-window-transient))
+                 :transient nil
+                 :inapt-if-not (lambda ()
+                                 (window-resizable (selected-window)
+                                                   1 t)))
+                ("<left>" "Decrease width" (lambda ()
+                                             (interactive)
+                                             (shrink-window-horizontally 1)
+                                             (transient-setup
+                                              'km-window-transient))
+                 :inapt-if-not (lambda ()
+                                 (window-resizable (selected-window)
+                                                   -1 t))
+                 :transient nil)
+                ("<up>" "v+" (lambda ()
+                               (interactive)
+                               (enlarge-window 1 nil)
+                               (transient-setup
+                                'km-window-transient))
+                 :inapt-if window-full-height-p
+                 :transient nil)
+                ("<down>" "v-" (lambda ()
+                                 (interactive)
+                                 (shrink-window 1 nil)
+                                 (transient-setup
+                                  'km-window-transient))
+                 :inapt-if window-full-height-p
+                 :transient nil)])
 
 (provide 'km-window)
 ;;; km-window.el ends here
