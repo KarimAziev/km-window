@@ -7,6 +7,7 @@
 ;; Version: 0.1.0
 ;; Keywords: convenience
 ;; Package-Requires: ((emacs "27.1") (transient "0.3.7.50"))
+;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -191,10 +192,39 @@ do nothing."
         (propertize suffix 'face 'success))
       ""))
 
+;;;###autoload
+(defun km-window-suffix-enlarge-horizontally ()
+	"Make selected window 1 columns wider."
+	(interactive)
+  (enlarge-window-horizontally 1)
+  (transient-setup transient-current-command))
+
+
+;;;###autoload
+(defun km-window-suffix-shrink-horizontally ()
+	"Make selected window 1 columns narrower."
+	(interactive)
+	(shrink-window-horizontally 1)
+  (transient-setup transient-current-command))
+
+;;;###autoload
+(defun km-window-suffix-enlarge-vertically ()
+	"Make the selected window 1 lines taller."
+	(interactive)
+	(enlarge-window 1 nil)
+  (transient-setup transient-current-command))
+
+;;;###autoload
+(defun km-window-suffix-shrink-window-vertically ()
+	"Make the selected window 1 lines taller."
+	(interactive)
+  (shrink-window 1 nil)
+  (transient-setup transient-current-command))
+
 ;;;###autoload (autoload 'km-window-transient "km-window.el" nil t)
 (transient-define-prefix km-window-transient ()
-  "Command dispatcher for window commands."
-  :transient-suffix  #'transient--do-call
+	"Command dispatcher for window commands."
+	:transient-suffix  #'transient--do-call
   :transient-non-suffix #'transient--do-exit
   [:description
    (lambda ()
@@ -231,35 +261,21 @@ do nothing."
                   (format "Resize (width %d) (height %d)" (window-width)
                           (window-height)))
                 ("<right>" "Increase width"
-                 (lambda ()
-                   (interactive)
-                   (enlarge-window-horizontally 1)
-                   (transient-setup 'km-window-transient))
+								 km-window-suffix-enlarge-horizontally
                  :transient nil
                  :inapt-if-not (lambda ()
                                  (window-resizable (selected-window)
                                                    1 t)))
-                ("<left>" "Decrease width" (lambda ()
-                                             (interactive)
-                                             (shrink-window-horizontally 1)
-                                             (transient-setup
-                                              'km-window-transient))
+                ("<left>" "Decrease width"
+								 km-window-suffix-shrink-horizontally
                  :inapt-if-not (lambda ()
                                  (window-resizable (selected-window)
                                                    -1 t))
                  :transient nil)
-                ("<up>" "v+" (lambda ()
-                               (interactive)
-                               (enlarge-window 1 nil)
-                               (transient-setup
-                                'km-window-transient))
+                ("<up>" "v+" km-window-suffix-enlarge-vertically
                  :inapt-if window-full-height-p
                  :transient nil)
-                ("<down>" "v-" (lambda ()
-                                 (interactive)
-                                 (shrink-window 1 nil)
-                                 (transient-setup
-                                  'km-window-transient))
+                ("<down>" "v-" km-window-suffix-shrink-window-vertically
                  :inapt-if window-full-height-p
                  :transient nil)])
 
