@@ -194,37 +194,37 @@ do nothing."
 
 ;;;###autoload
 (defun km-window-suffix-enlarge-horizontally ()
-	"Make selected window 1 columns wider."
-	(interactive)
+  "Make selected window 1 columns wider."
+  (interactive)
   (enlarge-window-horizontally 1)
   (transient-setup transient-current-command))
 
 
 ;;;###autoload
 (defun km-window-suffix-shrink-horizontally ()
-	"Make selected window 1 columns narrower."
-	(interactive)
-	(shrink-window-horizontally 1)
+  "Make selected window 1 columns narrower."
+  (interactive)
+  (shrink-window-horizontally 1)
   (transient-setup transient-current-command))
 
 ;;;###autoload
 (defun km-window-suffix-enlarge-vertically ()
-	"Make the selected window 1 lines taller."
-	(interactive)
-	(enlarge-window 1 nil)
+  "Make the selected window 1 lines taller."
+  (interactive)
+  (enlarge-window 1 nil)
   (transient-setup transient-current-command))
 
 ;;;###autoload
 (defun km-window-suffix-shrink-window-vertically ()
-	"Make the selected window 1 lines taller."
-	(interactive)
+  "Make the selected window 1 lines taller."
+  (interactive)
   (shrink-window 1 nil)
   (transient-setup transient-current-command))
 
 ;;;###autoload (autoload 'km-window-transient "km-window.el" nil t)
 (transient-define-prefix km-window-transient ()
-	"Command dispatcher for window commands."
-	:transient-suffix  #'transient--do-call
+  "Command dispatcher for window commands."
+  :transient-suffix  #'transient--do-call
   :transient-non-suffix #'transient--do-exit
   [:description
    (lambda ()
@@ -261,13 +261,13 @@ do nothing."
                   (format "Resize (width %d) (height %d)" (window-width)
                           (window-height)))
                 ("<right>" "Increase width"
-								 km-window-suffix-enlarge-horizontally
+                 km-window-suffix-enlarge-horizontally
                  :transient nil
                  :inapt-if-not (lambda ()
                                  (window-resizable (selected-window)
                                                    1 t)))
                 ("<left>" "Decrease width"
-								 km-window-suffix-shrink-horizontally
+                 km-window-suffix-shrink-horizontally
                  :inapt-if-not (lambda ()
                                  (window-resizable (selected-window)
                                                    -1 t))
