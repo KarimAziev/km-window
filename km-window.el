@@ -6,7 +6,7 @@
 ;; URL: https://github.com/KarimAziev/km-window
 ;; Version: 0.1.0
 ;; Keywords: convenience
-;; Package-Requires: ((emacs "27.1") (transient "0.3.7.50"))
+;; Package-Requires: ((emacs "27.1") (transient "0.4.1"))
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; This file is NOT part of GNU Emacs.
@@ -32,6 +32,8 @@
 
 (require 'transient)
 
+
+(declare-function winner-undo "winner")
 
 (defun km-window-buffers-visible (&optional buffer-list)
   "Return a list of visible buffers from BUFFER-LIST."
@@ -278,6 +280,16 @@ do nothing."
                 ("<down>" "v-" km-window-suffix-shrink-window-vertically
                  :inapt-if window-full-height-p
                  :transient nil)])
+
+
+;;;###autoload
+(defun km-window-kill-buffer-window-and-undo ()
+  "Kill the current buffer and delete the selected window.
+Then switch back to an earlier window configuration."
+  (interactive)
+  (require 'winner)
+  (kill-buffer-and-window)
+  (winner-undo))
 
 (provide 'km-window)
 ;;; km-window.el ends here
