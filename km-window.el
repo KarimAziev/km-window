@@ -6,7 +6,7 @@
 ;; URL: https://github.com/KarimAziev/km-window
 ;; Version: 0.1.0
 ;; Keywords: convenience
-;; Package-Requires: ((emacs "27.1") (transient "0.4.1"))
+;; Package-Requires: ((emacs "27.1") (transient "0.4.3"))
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; This file is NOT part of GNU Emacs.
@@ -89,6 +89,17 @@ If other window doesn't exists, split selected window right."
                    (progn (split-window-sensibly) wind))))))
          wind-target)
      (progn ,@body)))
+
+;;;###autoload
+(defun km-window-curr-buffer-to-other-window-and-pop-prev-buffer ()
+  "Move current buffer to another window and show previous buffer."
+  (interactive)
+  (let ((buff (current-buffer))
+        (wnd (selected-window)))
+    (km-window-with-other-window
+     (pop-to-buffer-same-window buff))
+    (with-selected-window wnd
+      (previous-buffer))))
 
 (defun km-window-scroll-other-window (&optional arg)
   "Without ARG or ARG is positive integer scroll other window down.
@@ -223,7 +234,7 @@ do nothing."
   (shrink-window 1 nil)
   (transient-setup transient-current-command))
 
-;;;###autoload (autoload 'km-window-transient "km-window.el" nil t)
+;;;###autoload (autoload 'km-window-transient "km-window" nil t)
 (transient-define-prefix km-window-transient ()
   "Command dispatcher for window commands."
   :transient-suffix  #'transient--do-call
