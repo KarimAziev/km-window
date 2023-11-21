@@ -269,28 +269,30 @@ do nothing."
                    (concat "Unset "
                            (km-window-transient-get-dedicated-description)
                            " dedicated windows")))
-   ("o" "Other window" other-window)]
+   ("o" "Other window" other-window)
+   ("O" "Current buffer to another window and show previous buffer"
+    km-window-curr-buffer-to-other-window-and-pop-prev-buffer)]
   [:description (lambda ()
                   (format "Resize (width %d) (height %d)" (window-width)
                           (window-height)))
-                ("<right>" "Increase width"
-                 km-window-suffix-enlarge-horizontally
-                 :transient nil
-                 :inapt-if-not (lambda ()
-                                 (window-resizable (selected-window)
-                                                   1 t)))
-                ("<left>" "Decrease width"
-                 km-window-suffix-shrink-horizontally
-                 :inapt-if-not (lambda ()
-                                 (window-resizable (selected-window)
-                                                   -1 t))
-                 :transient nil)
-                ("<up>" "v+" km-window-suffix-enlarge-vertically
-                 :inapt-if window-full-height-p
-                 :transient nil)
-                ("<down>" "v-" km-window-suffix-shrink-window-vertically
-                 :inapt-if window-full-height-p
-                 :transient nil)])
+   ("<right>" "Increase width"
+    km-window-suffix-enlarge-horizontally
+    :transient nil
+    :inapt-if-not (lambda ()
+                    (window-resizable (selected-window)
+                                      1 t)))
+   ("<left>" "Decrease width"
+    km-window-suffix-shrink-horizontally
+    :inapt-if-not (lambda ()
+                    (window-resizable (selected-window)
+                                      -1 t))
+    :transient nil)
+   ("<up>" "v+" km-window-suffix-enlarge-vertically
+    :inapt-if window-full-height-p
+    :transient nil)
+   ("<down>" "v-" km-window-suffix-shrink-window-vertically
+    :inapt-if window-full-height-p
+    :transient nil)])
 
 
 ;;;###autoload
