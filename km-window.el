@@ -222,14 +222,14 @@ do nothing."
 
 ;;;###autoload
 (defun km-window-suffix-enlarge-vertically ()
-  "Make the selected window 1 lines taller."
+  "Enlarge current window by one line vertically."
   (interactive)
   (enlarge-window 1 nil)
   (transient-setup transient-current-command))
 
 ;;;###autoload
 (defun km-window-suffix-shrink-window-vertically ()
-  "Make the selected window 1 lines taller."
+  "Shrink the current window by one line vertically."
   (interactive)
   (shrink-window 1 nil)
   (transient-setup transient-current-command))
