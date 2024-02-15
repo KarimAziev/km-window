@@ -304,5 +304,24 @@ Then switch back to an earlier window configuration."
   (kill-buffer-and-window)
   (winner-undo))
 
+
+;;;###autoload
+(defun km-window-split-window-sensibly (&optional window)
+  "Split WINDOW only if absolutely necessary.
+
+Only split if there is no split, and only split into left or right
+windows.
+
+If no window is specified then WINDOW defaults to output of `selected-window'.
+
+`split-width-threshold' is observed."
+  (let ((window (or window (selected-window))))
+    (if (and
+         (window-splittable-p window t)
+         (eq (length (window-list)) 1))
+        (with-selected-window window
+          (split-window-right))
+      nil)))
+
 (provide 'km-window)
 ;;; km-window.el ends here
