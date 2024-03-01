@@ -205,12 +205,17 @@ do nothing."
         (propertize suffix 'face 'success))
       ""))
 
+(defun km-window--transient-setup ()
+  "Set up transient for the current command if it exists."
+  (when transient-current-command
+    (transient-setup transient-current-command)))
+
 ;;;###autoload
 (defun km-window-suffix-enlarge-horizontally ()
   "Make selected window 1 columns wider."
   (interactive)
   (enlarge-window-horizontally 1)
-  (transient-setup transient-current-command))
+  (km-window--transient-setup))
 
 
 ;;;###autoload
@@ -218,21 +223,21 @@ do nothing."
   "Make selected window 1 columns narrower."
   (interactive)
   (shrink-window-horizontally 1)
-  (transient-setup transient-current-command))
+  (km-window--transient-setup))
 
 ;;;###autoload
 (defun km-window-suffix-enlarge-vertically ()
   "Enlarge current window by one line vertically."
   (interactive)
   (enlarge-window 1 nil)
-  (transient-setup transient-current-command))
+  (km-window--transient-setup))
 
 ;;;###autoload
 (defun km-window-suffix-shrink-window-vertically ()
   "Shrink the current window by one line vertically."
   (interactive)
   (shrink-window 1 nil)
-  (transient-setup transient-current-command))
+  (km-window--transient-setup))
 
 ;;;###autoload (autoload 'km-window-transient "km-window" nil t)
 (transient-define-prefix km-window-transient ()
