@@ -6,7 +6,7 @@
 ;; URL: https://github.com/KarimAziev/km-window
 ;; Version: 0.1.0
 ;; Keywords: convenience
-;; Package-Requires: ((emacs "27.1") (transient "0.4.3"))
+;; Package-Requires: ((emacs "27.1") (transient "0.5.3"))
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; This file is NOT part of GNU Emacs.
