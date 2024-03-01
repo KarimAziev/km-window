@@ -239,6 +239,45 @@ do nothing."
   (shrink-window 1 nil)
   (km-window--transient-setup))
 
+(defun km-window--add-frame-alpha-background (value)
+  "Adjust frame's alpha background by VALUE, ensuring it stays within 0-100.
+
+Argument VALUE is the amount by which to adjust the frame's alpha background
+value."
+  (let* ((frame (selected-frame))
+         (current-background (or (frame-parameter frame 'alpha-background)
+                                 0)))
+    (set-frame-parameter frame 'alpha-background
+                         (if (> value 0)
+                             (min 100 (+
+                                       current-background
+                                       value))
+                           (max 0 (+
+                                   current-background
+                                   value))))))
+
+(defun km-window--frame-inc-alpha-background ()
+  "Increase frame's alpha background by 1, ensuring it stays within 0-100 range."
+  (interactive)
+  (km-window--add-frame-alpha-background 1))
+
+(defun km-window--frame-dec-alpha-background ()
+  "Decrease frame's alpha background by 1, ensuring it stays within 0-100."
+  (interactive)
+  (km-window--add-frame-alpha-background -1))
+
+;;;###autoload (autoload 'km-window-frame-menu "km-window" nil t)
+(transient-define-prefix km-window-frame-menu ()
+  "Adjust frame transparency with \"More\" or \"Less\" options."
+  :transient-suffix  #'transient--do-call
+  :transient-non-suffix #'transient--do-exit
+  [:description (lambda ()
+                  (let ((param (frame-parameter (selected-frame)
+                                                'alpha-background)))
+                    (format "Transparency (%s)" (or param 0))))
+   ("<up>" "More" km-window--frame-inc-alpha-background)
+   ("<down>" "Less" km-window--frame-dec-alpha-background)])
+
 ;;;###autoload (autoload 'km-window-transient "km-window" nil t)
 (transient-define-prefix km-window-transient ()
   "Command dispatcher for window commands."
@@ -276,7 +315,8 @@ do nothing."
                            " dedicated windows")))
    ("o" "Other window" other-window)
    ("O" "Current buffer to another window and show previous buffer"
-    km-window-curr-buffer-to-other-window-and-pop-prev-buffer)]
+    km-window-curr-buffer-to-other-window-and-pop-prev-buffer)
+   ("f" "Frame settings" km-window-frame-menu)]
   [:description (lambda ()
                   (format "Resize (width %d) (height %d)" (window-width)
                           (window-height)))
