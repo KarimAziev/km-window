@@ -149,6 +149,7 @@ Also works with xwidgets and eaf."
 
 ;; dedicated window
 
+
 ;;;###autoload
 (defun km-window-select-dedicated ()
   "Select a dedicated window possibly with completions in minibuffer.
@@ -239,22 +240,46 @@ do nothing."
   (shrink-window 1 nil)
   (km-window--transient-setup))
 
+(defun km-window--add-frame-alpha-param (prop value &optional min-value
+                                              max-value)
+  "Adjust frame transparency by adding VALUE to the current alpha PROP parameter.
+
+Argument PROP is the frame parameter to modify.
+
+Argument VALUE is the amount to add to the current parameter value."
+  (let* ((frame (selected-frame))
+         (current (frame-parameter frame prop))
+         (incompatible-prop (if (eq prop 'alpha-background)
+                                'alpha
+                              (and (eq prop 'alpha)
+                                   'alpha-background)))
+         (next-val (max (+ (or current 100) value)
+                        (or min-value 1))))
+    (when (and incompatible-prop
+               (frame-parameter frame incompatible-prop))
+      (set-frame-parameter frame incompatible-prop nil))
+    (set-frame-parameter frame prop
+                         (if (> value 0)
+                             (min (or max-value 100)
+                                  next-val)
+                           (max (or min-value 1)
+                                next-val)))))
+
 (defun km-window--add-frame-alpha-background (value)
   "Adjust frame's alpha background by VALUE, ensuring it stays within 0-100.
 
 Argument VALUE is the amount by which to adjust the frame's alpha background
 value."
-  (let* ((frame (selected-frame))
-         (current-background (or (frame-parameter frame 'alpha-background)
-                                 0)))
-    (set-frame-parameter frame 'alpha-background
-                         (if (> value 0)
-                             (min 100 (+
-                                       current-background
-                                       value))
-                           (max 0 (+
-                                   current-background
-                                   value))))))
+  (km-window--add-frame-alpha-param 'alpha-background value
+                                    1
+                                    100))
+
+(defun km-window--add-frame-alpha (value)
+  "Adjust frame transparency by adding VALUE to its alpha parameter.
+
+Argument VALUE is the amount to add to the current alpha parameter value."
+  (km-window--add-frame-alpha-param 'alpha value
+                                    frame-alpha-lower-limit))
 
 (defun km-window--frame-inc-alpha-background ()
   "Increase frame's alpha background by 1, ensuring it stays within 0-100 range."
@@ -266,6 +291,16 @@ value."
   (interactive)
   (km-window--add-frame-alpha-background -1))
 
+(defun km-window--frame-inc-alpha ()
+  "Increase frame's alpha transparency by 1."
+  (interactive)
+  (km-window--add-frame-alpha 1))
+
+(defun km-window--frame-dec-alpha ()
+  "Decrease frame's alpha transparency by 1."
+  (interactive)
+  (km-window--add-frame-alpha -1))
+
 ;;;###autoload (autoload 'km-window-frame-menu "km-window" nil t)
 (transient-define-prefix km-window-frame-menu ()
   "Adjust frame transparency with \"More\" or \"Less\" options."
@@ -274,9 +309,15 @@ value."
   [:description (lambda ()
                   (let ((param (frame-parameter (selected-frame)
                                                 'alpha-background)))
-                    (format "Transparency (%s)" (or param 0))))
+                    (format "Alpha background (%s)" param)))
    ("<up>" "More" km-window--frame-inc-alpha-background)
-   ("<down>" "Less" km-window--frame-dec-alpha-background)])
+   ("<down>" "Less" km-window--frame-dec-alpha-background)]
+  [:description (lambda ()
+                  (let ((param (frame-parameter (selected-frame)
+                                                'alpha)))
+                    (format "Alpha (%s)" param)))
+   ("<right>" "More" km-window--frame-inc-alpha)
+   ("<left>" "Less" km-window--frame-dec-alpha)])
 
 ;;;###autoload (autoload 'km-window-transient "km-window" nil t)
 (transient-define-prefix km-window-transient ()
