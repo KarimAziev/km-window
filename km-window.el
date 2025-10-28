@@ -95,6 +95,12 @@ WIDTH is an integer representing the current frame width."
             (throw 'km-found val)))))
     nil))
 
+;;;###autoload
+(defun km-window-apply-split-width-to-current-frame ()
+  "Apply the `split-width-threshold' based on the current frame's width.
+
+May be added to `after-init-hook'."
+  (km-window--apply-split-width-threshold-to-frame (selected-frame)))
 
 (defun km-window--apply-split-width-threshold-to-frame (frame)
   "Set `split-width-threshold' according to FRAME's current width."
