@@ -35,6 +35,116 @@
 
 (declare-function winner-undo "winner")
 
+(defcustom km-window-split-width-thresholds '((nil 349 160) ; width <= 349  -> 160
+                                              (350 nil 200)) ; width >= 350  -> 200
+  "Thresholds for determining window split width based on frame width.
+
+A list of width thresholds for determining the `split-width-threshold'
+value based on the current frame width.
+
+Each element in the list should be a list containing three items:
+a minimum width, a maximum width, and the threshold value to use
+when the frame width falls within this range.
+
+The minimum and maximum width can be specified as integers or
+nil. A nil value for minimum means no lower bound, and a
+nil value for maximum means no upper bound.
+
+The threshold value is an integer that will be set as the
+`split-width-threshold' when the frame width is within the
+specified range."
+  :type '(repeat (list (choice
+                        (const :tag "no min" nil) integer)
+                  (choice
+                   (const :tag "no max" nil) integer)
+                  integer))
+  :group 'km-window)
+
+(defcustom km-window-split-threshold-delay 0.5
+  "Delay in seconds before updating `split-width-threshold'.
+
+Specifies the delay in seconds before updating the window split
+threshold after a frame resize event, such as toggling fullscreen
+mode.
+
+This value determines how long to wait before applying the new
+`split-width-threshold' to the frame, allowing the frame to
+stabilize after resizing."
+  :type 'number
+  :group 'km-window)
+
+(defcustom km-window-split-width-default nil
+  "Fallback value to use for `split-width-threshold' when no range matches.
+If nil, do not change `split-width-threshold'."
+  :type '(choice (const :tag "leave unchanged" nil) integer)
+  :group 'km-window)
+
+(defun km-window--value-for-frame-width (width)
+  "Return the threshold value for a given frame WIDTH from predefined ranges.
+
+WIDTH is an integer representing the current frame width."
+  (catch 'km-found
+    (dolist (entry km-window-split-width-thresholds)
+      (let ((min (nth 0 entry))
+            (max (nth 1 entry))
+            (val (nth 2 entry)))
+        (let ((minb (if min min -1))
+              (maxb (if max max most-positive-fixnum)))
+          (when (and (<= minb width)
+                     (<= width maxb))
+            (throw 'km-found val)))))
+    nil))
+
+
+(defun km-window--apply-split-width-threshold-to-frame (frame)
+  "Set `split-width-threshold' according to FRAME's current width."
+  (when (frame-live-p frame)
+    (with-selected-frame frame
+      (let* ((frame-w (frame-width frame))
+             (val (km-window--value-for-frame-width frame-w)))
+        (when val
+          (setq split-width-threshold val))))))
+
+(defvar km-window--pending-split-threshold-timer nil
+  "Timer object for a pending `split-width-threshold' update, or nil.")
+
+(defun km-window-update-split-width-threshold-delayed (&rest args)
+  "Advice for `toggle-frame-fullscreen'.  Schedule an update after frame resize.
+ARGS may contain the FRAME argument passed to `toggle-frame-fullscreen'."
+  (when (and km-window--pending-split-threshold-timer
+             (timerp km-window--pending-split-threshold-timer))
+    (cancel-timer km-window--pending-split-threshold-timer)
+    (setq km-window--pending-split-threshold-timer nil))
+  (let ((f (or (car args)
+               (selected-frame))))
+    (setq km-window--pending-split-threshold-timer
+          (run-with-idle-timer
+           km-window-split-threshold-delay nil
+           #'km-window--apply-split-width-threshold-to-frame
+           f))))
+
+
+;;;###autoload
+(define-minor-mode km-window-auto-split-mode
+  "Global minor mode to adjust `split-width-threshold' after fullscreen toggles.
+
+When enabled, an :after advice is added to `toggle-frame-fullscreen' that
+schedules an update (after `km-window-split-threshold-delay' seconds) so the
+frame width reflects the new fullscreen state."
+  :global t
+  :group 'km-window
+  :lighter " KM-Split"
+  (if km-window-auto-split-mode
+      (unless (advice-member-p #'km-window-update-split-width-threshold-delayed
+                               'toggle-frame-fullscreen)
+        (advice-add 'toggle-frame-fullscreen :after
+                    #'km-window-update-split-width-threshold-delayed))
+    (when (advice-member-p #'km-window-update-split-width-threshold-delayed
+                           'toggle-frame-fullscreen)
+      (advice-remove 'toggle-frame-fullscreen
+                     #'km-window-update-split-width-threshold-delayed))))
+
+
 (defun km-window-buffers-visible (&optional buffer-list)
   "Return a list of visible buffers from BUFFER-LIST."
   (let ((buffers (delete-dups (mapcar #'window-buffer (window-list)))))
