@@ -1,6 +1,6 @@
-;;; km-window.el --- Misc window commands -*- lexical-binding: t; -*-
+;;; km-window.el --- Window and frame commands -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2023 Karim Aziiev <karim.aziiev@gmail.com>
+;; Copyright (C) 2023-2026 Karim Aziiev <karim.aziiev@gmail.com>
 
 ;; Author: Karim Aziiev <karim.aziiev@gmail.com>
 ;; URL: https://github.com/KarimAziev/km-window
@@ -26,7 +26,21 @@
 
 ;;; Commentary:
 
-;; Misc window commands
+;; `km-window' collects commands for working with Emacs windows and graphical
+;; frames.  It includes helpers for moving buffers between windows, scrolling
+;; another window, managing dedicated windows, resizing the selected window,
+;; and restoring earlier window configurations with Winner mode.
+;;
+;; The package can also choose `split-width-threshold' from configurable frame
+;; width ranges.  Enable `km-window-auto-split-mode' to update that threshold
+;; after toggling frame fullscreen state.
+;;
+;; `km-window-transient' is the main command dispatcher.  Its frame submenu,
+;; `km-window-frame-menu', displays the selected frame's live position, size,
+;; monitor, window-manager state, and opacity.  From there, arrow keys move the
+;; frame, shifted arrow keys resize it, and dedicated keys adjust opacity.
+;; Movement and resizing are unavailable while the frame is fullscreen or
+;; maximized, or when the selected frame is not graphical.
 
 ;;; Code:
 
@@ -77,6 +91,16 @@ stabilize after resizing."
   "Fallback value to use for `split-width-threshold' when no range matches.
 If nil, do not change `split-width-threshold'."
   :type '(choice (const :tag "leave unchanged" nil) integer)
+  :group 'km-window)
+
+(defcustom km-window-frame-move-step 20
+  "Number of pixels by which frame movement commands move a frame."
+  :type 'natnum
+  :group 'km-window)
+
+(defcustom km-window-frame-resize-step 1
+  "Number of columns or lines by which frame resize commands resize a frame."
+  :type 'natnum
   :group 'km-window)
 
 (defun km-window--value-for-frame-width (width)
@@ -417,23 +441,189 @@ Argument VALUE is the amount to add to the current alpha parameter value."
   (interactive)
   (km-window--add-frame-alpha -1))
 
+(defun km-window--frame-fullscreen-or-maximized-p (&optional frame)
+  "Return non-nil when FRAME is fullscreen or maximized.
+FRAME defaults to the selected frame."
+  (memq (frame-parameter (or frame (selected-frame)) 'fullscreen)
+        '(fullscreen fullboth maximized)))
+
+(defun km-window--frame-movable-p ()
+  "Return non-nil when the selected frame can be moved or resized."
+  (let ((frame (selected-frame)))
+    (and (display-graphic-p frame)
+         (not (km-window--frame-fullscreen-or-maximized-p frame)))))
+
+(defun km-window--move-frame (delta-x delta-y)
+  "Move the selected frame by DELTA-X and DELTA-Y pixels."
+  (unless (km-window--frame-movable-p)
+    (user-error "Cannot move a fullscreen or maximized frame"))
+  (let* ((frame (selected-frame))
+         (position (frame-position frame)))
+    (set-frame-position frame
+                        (+ (car position) delta-x)
+                        (+ (cdr position) delta-y)))
+  (km-window--transient-setup))
+
+(defun km-window--frame-move-left ()
+  "Move the selected frame left by `km-window-frame-move-step' pixels."
+  (interactive)
+  (km-window--move-frame (- km-window-frame-move-step) 0))
+
+(defun km-window--frame-move-right ()
+  "Move the selected frame right by `km-window-frame-move-step' pixels."
+  (interactive)
+  (km-window--move-frame km-window-frame-move-step 0))
+
+(defun km-window--frame-move-up ()
+  "Move the selected frame up by `km-window-frame-move-step' pixels."
+  (interactive)
+  (km-window--move-frame 0 (- km-window-frame-move-step)))
+
+(defun km-window--frame-move-down ()
+  "Move the selected frame down by `km-window-frame-move-step' pixels."
+  (interactive)
+  (km-window--move-frame 0 km-window-frame-move-step))
+
+(defun km-window--resize-frame (delta-width delta-height)
+  "Resize the selected frame by DELTA-WIDTH columns and DELTA-HEIGHT lines."
+  (unless (km-window--frame-movable-p)
+    (user-error "Cannot resize the selected frame"))
+  (let ((frame (selected-frame)))
+    (set-frame-size frame
+                    (max 1 (+ (frame-width frame) delta-width))
+                    (max 1 (+ (frame-height frame) delta-height))))
+  (km-window--transient-setup))
+
+(defun km-window--frame-narrower ()
+  "Make the selected frame narrower by `km-window-frame-resize-step' columns."
+  (interactive)
+  (km-window--resize-frame (- km-window-frame-resize-step) 0))
+
+(defun km-window--frame-wider ()
+  "Make the selected frame wider by `km-window-frame-resize-step' columns."
+  (interactive)
+  (km-window--resize-frame km-window-frame-resize-step 0))
+
+(defun km-window--frame-shorter ()
+  "Make the selected frame shorter by `km-window-frame-resize-step' lines."
+  (interactive)
+  (km-window--resize-frame 0 (- km-window-frame-resize-step)))
+
+(defun km-window--frame-taller ()
+  "Make the selected frame taller by `km-window-frame-resize-step' lines."
+  (interactive)
+  (km-window--resize-frame 0 km-window-frame-resize-step))
+
+(defun km-window--frame-state-description (&optional frame)
+  "Return a propertized description of FRAME's window-manager state.
+FRAME defaults to the selected frame."
+  (let ((state (frame-parameter (or frame (selected-frame)) 'fullscreen)))
+    (propertize
+     (pcase state
+       ((or 'fullscreen 'fullboth) "fullscreen")
+       ('maximized "maximized")
+       ('fullwidth "full width")
+       ('fullheight "full height")
+       (_ "normal"))
+     'face (if (memq state '(fullscreen fullboth maximized))
+               'warning
+             'success))))
+
+(defun km-window--frame-position-description ()
+  "Return a dynamic transient heading describing frame position and display."
+  (let* ((frame (selected-frame))
+         (position (frame-position frame))
+         (monitor (frame-monitor-attributes frame))
+         (monitor-name (alist-get 'name monitor)))
+    (format "Move  %s  %s%s"
+            (propertize
+             (format "@ %d, %d px" (car position) (cdr position))
+             'face 'transient-value)
+            (km-window--frame-state-description frame)
+            (if monitor-name
+                (format "  %s" (propertize monitor-name 'face 'shadow))
+              ""))))
+
+(defun km-window--frame-size-description ()
+  "Return a dynamic transient heading describing the selected frame's size."
+  (let ((frame (selected-frame)))
+    (format "Resize  %s  %s"
+            (propertize
+             (format "%d x %d chars"
+                     (frame-width frame) (frame-height frame))
+             'face 'transient-value)
+            (propertize
+             (format "%d x %d px"
+                     (frame-pixel-width frame) (frame-pixel-height frame))
+             'face 'shadow))))
+
+(defun km-window--frame-move-description (direction)
+  "Return a dynamic transient description for moving in DIRECTION."
+  (format "%s %d px" direction km-window-frame-move-step))
+
+(defun km-window--frame-resize-description (direction unit)
+  "Return a dynamic resize description using DIRECTION and UNIT."
+  (format "%s %d %s%s"
+          direction
+          km-window-frame-resize-step
+          unit
+          (if (= km-window-frame-resize-step 1) "" "s")))
+
 ;;;###autoload (autoload 'km-window-frame-menu "km-window" nil t)
 (transient-define-prefix km-window-frame-menu ()
-  "Adjust frame transparency with \"More\" or \"Less\" options."
+  "Move, resize, and adjust the transparency of the selected frame."
   :transient-suffix  #'transient--do-call
   :transient-non-suffix #'transient--do-exit
-  [:description (lambda ()
-                  (let ((param (frame-parameter (selected-frame)
-                                                'alpha-background)))
-                    (format "Alpha background (%s)" param)))
-   ("<up>" "More" km-window--frame-inc-alpha-background)
-   ("<down>" "Less" km-window--frame-dec-alpha-background)]
-  [:description (lambda ()
-                  (let ((param (frame-parameter (selected-frame)
-                                                'alpha)))
-                    (format "Alpha (%s)" param)))
-   ("<right>" "More" km-window--frame-inc-alpha)
-   ("<left>" "Less" km-window--frame-dec-alpha)])
+  [[:description km-window--frame-position-description
+    ("<left>" km-window--frame-move-left
+     :description (lambda ()
+                    (km-window--frame-move-description "\u2190 Left"))
+     :inapt-if-not km-window--frame-movable-p)
+    ("<right>" km-window--frame-move-right
+     :description (lambda ()
+                    (km-window--frame-move-description "\u2192 Right"))
+     :inapt-if-not km-window--frame-movable-p)
+    ("<up>" km-window--frame-move-up
+     :description (lambda ()
+                    (km-window--frame-move-description "\u2191 Up"))
+     :inapt-if-not km-window--frame-movable-p)
+    ("<down>" km-window--frame-move-down
+     :description (lambda ()
+                    (km-window--frame-move-description "\u2193 Down"))
+     :inapt-if-not km-window--frame-movable-p)]
+   [:description km-window--frame-size-description
+    ("S-<left>" km-window--frame-narrower
+     :description (lambda ()
+                    (km-window--frame-resize-description "\u2194 Narrower"
+                                                         "column"))
+     :inapt-if-not km-window--frame-movable-p)
+    ("S-<right>" km-window--frame-wider
+     :description (lambda ()
+                    (km-window--frame-resize-description "\u2194 Wider"
+                                                         "column"))
+     :inapt-if-not km-window--frame-movable-p)
+    ("S-<up>" km-window--frame-shorter
+     :description (lambda ()
+                    (km-window--frame-resize-description "\u2195 Shorter"
+                                                         "line"))
+     :inapt-if-not km-window--frame-movable-p)
+    ("S-<down>" km-window--frame-taller
+     :description (lambda ()
+                    (km-window--frame-resize-description "\u2195 Taller"
+                                                         "line"))
+     :inapt-if-not km-window--frame-movable-p)]]
+  [[:description (lambda ()
+                   (let ((param (frame-parameter (selected-frame)
+                                                 'alpha-background)))
+                     (format "Background opacity  %s%%" (or param 100))))
+    ("+" "More opaque" km-window--frame-inc-alpha-background)
+    ("-" "More transparent" km-window--frame-dec-alpha-background)]
+   [:description (lambda ()
+                   (let ((param (frame-parameter (selected-frame)
+                                                 'alpha)))
+                     (format "Frame opacity  %s%%" (or param 100))))
+    ("]" "More opaque" km-window--frame-inc-alpha)
+    ("[" "More transparent" km-window--frame-dec-alpha)]])
 
 ;;;###autoload (autoload 'km-window-transient "km-window" nil t)
 (transient-define-prefix km-window-transient ()

@@ -34,5 +34,5 @@ Add the downloaded directory to the load path:
          ("C-M-S-v" . km-window-scroll-other-window-up)
          ("C-M-]" . km-window-scroll-other-window-down)
          ("C-M-[" . km-window-scroll-other-window-up)
-         ("C-c w" . km-window-transient)) )
+         ("C-c w" . km-window-transient)))
 #+end_src
